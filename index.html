@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz SC-900 - Funcionalidades de protección de información en Microsoft Purview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  header {
+    background: #0078d4;
+    color: white;
+    padding: 30px;
+    text-align: center;
+  }
+  header h1 { font-size: 1.8em; margin-bottom: 8px; }
+  header p { opacity: 0.9; font-size: 0.95em; }
+  .progress-bar {
+    background: #e0e0e0;
+    height: 8px;
+    width: 100%;
+  }
+  .progress-fill {
+    background: #00bcf2;
+    height: 100%;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .quiz-content {
+    padding: 30px;
+    position: relative;
+  }
+  .slider {
+    position: relative;
+    width: 100%;
+    min-height: 520px;
+    overflow: hidden;
+  }
+  .question-card {
+    background: #f9f9f9;
+    border-left: 5px solid #0078d4;
+    padding: 24px;
+    border-radius: 8px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    transition: transform 0.5s ease, opacity 0.4s ease;
+  }
+  .question-card.current { transform: translateX(0); opacity: 1; }
+  .question-card.next { transform: translateX(110%); opacity: 0; }
+  .question-card.prev { transform: translateX(-110%); opacity: 0; }
+  .question-number {
+    color: #0078d4;
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 8px;
+  }
+  .question-text {
+    font-size: 1.1em;
+    margin-bottom: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    background: white;
+    border: 2px solid #ddd;
+    padding: 12px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.98em;
+    text-align: left;
+    font-family: inherit;
+  }
+  .option:hover:not(:disabled) {
+    border-color: #0078d4;
+    background: #f0f8ff;
+  }
+  .option:disabled { cursor: not-allowed; }
+  .option.correct {
+    background: #d4edda !important;
+    border-color: #28a745 !important;
+    color: #155724;
+    font-weight: 600;
+  }
+  .option.incorrect {
+    background: #f8d7da !important;
+    border-color: #dc3545 !important;
+    color: #721c24;
+  }
+  .feedback {
+    margin-top: 15px;
+    padding: 14px;
+    border-radius: 6px;
+    display: none;
+    font-size: 0.95em;
+    line-height: 1.5;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct-fb { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+  .feedback.incorrect-fb { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+  .feedback strong { display: block; margin-bottom: 6px; }
+  .nav-bar {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    clear: both;
+    position: relative;
+    z-index: 2;
+  }
+  .btn-next {
+    background: #0078d4;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease;
+    font-family: inherit;
+  }
+  .btn-next:hover:not(:disabled) { background: #005a9e; }
+  .btn-next:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .results {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #0078d4, #00bcf2);
+    color: white;
+    border-radius: 8px;
+  }
+  .results.show { display: block; }
+  .results h2 { font-size: 2em; margin-bottom: 15px; }
+  .results .score { font-size: 3em; font-weight: bold; margin: 15px 0; }
+  .results button {
+    background: white;
+    color: #0078d4;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 15px;
+    font-family: inherit;
+  }
+  .results button:hover { background: #f0f0f0; }
+  footer {
+    text-align: center;
+    padding: 15px;
+    background: #f0f0f0;
+    color: #666;
+    font-size: 0.85em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Quiz SC-900</h1>
+    <p>Funcionalidades de protección de información en Microsoft Purview</p>
+  </header>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="quiz-content">
+    <div class="slider" id="slider"></div>
+    <div class="nav-bar" id="navBar" style="display:none;">
+      <button class="btn-next" id="btnNext" disabled>Siguiente →</button>
+    </div>
+    <div class="results" id="results">
+      <h2>¡Quiz Completado!</h2>
+      <div class="score" id="scoreText">0 / 30</div>
+      <p id="scoreMessage"></p>
+      <button onclick="location.reload()">Volver a intentar</button>
+    </div>
+  </div>
+  <footer>SC-900: Microsoft Security, Compliance, and Identity Fundamentals</footer>
+</div>
+
+<script>
+const questions = [
+  { q: "¿Cuál es el objetivo principal de las funcionalidades de protección de información de Microsoft Purview?",
+    options: ["Realizar copias de seguridad de los datos","Detectar, clasificar y proteger información confidencial dondequiera que se encuentre","Acelerar el rendimiento de las aplicaciones","Administrar identidades de usuario"],
+    correct: 1, explanation: "La protección de información de Purview ayuda a las organizaciones a detectar, clasificar y proteger los datos confidenciales a lo largo de su ciclo de vida, sin importar dónde residan." },
+  { q: "¿Qué son las etiquetas de confidencialidad (sensitivity labels) en Microsoft Purview?",
+    options: ["Etiquetas físicas adheridas a dispositivos","Metadatos que clasifican documentos y correos según su nivel de sensibilidad y aplican protección","Reglas de firewall para la red","Grupos de seguridad de Azure AD"],
+    correct: 1, explanation: "Las etiquetas de confidencialidad permiten clasificar y proteger el contenido (documentos, correos, sitios) aplicando acciones como cifrado, marcas visuales y restricciones de acceso." },
+  { q: "¿Qué acciones de protección puede aplicar una etiqueta de confidencialidad?",
+    options: ["Solo cambiar el color del documento","Cifrado, marcas de contenido (encabezados, pies, marcas de agua) y restricciones de acceso","Solo eliminar el documento","Solo enviar una alerta al administrador"],
+    correct: 1, explanation: "Una etiqueta de confidencialidad puede cifrar el contenido, agregar marcas visuales (encabezado, pie de página, marca de agua) y controlar el acceso, entre otras protecciones." },
+  { q: "¿Las etiquetas de confidencialidad permanecen con el archivo cuando este sale de la organización?",
+    options: ["No, se eliminan al compartir el archivo","Sí, la etiqueta y su cifrado persisten con el documento dondequiera que vaya","Solo si el archivo está en SharePoint","Solo durante 24 horas"],
+    correct: 1, explanation: "Las etiquetas se almacenan como metadatos en el archivo y persisten con él, por lo que la protección (incluido el cifrado) viaja con el documento incluso fuera de la organización." },
+  { q: "¿Qué característica de las etiquetas permite que todo el contenido herede automáticamente la clasificación de un contenedor?",
+    options: ["Etiquetas predeterminadas de cliente","Etiquetas aplicadas a contenedores (sitios de SharePoint, Teams, grupos)","Etiquetas de retención","Etiquetas de auditoría"],
+    correct: 1, explanation: "Las etiquetas de confidencialidad pueden aplicarse a contenedores como sitios de SharePoint, equipos de Teams y grupos de Microsoft 365, controlando la configuración de privacidad y acceso." },
+  { q: "¿Qué es el etiquetado automático (auto-labeling) en Microsoft Purview?",
+    options: ["Asignar etiquetas manualmente una por una","Aplicar etiquetas de confidencialidad automáticamente cuando el contenido coincide con condiciones definidas","Cambiar el nombre de los archivos automáticamente","Crear backups automáticos"],
+    correct: 1, explanation: "El etiquetado automático aplica etiquetas de confidencialidad sin intervención del usuario cuando el contenido cumple con condiciones (por ejemplo, contiene números de tarjeta de crédito)." },
+  { q: "¿Dónde puede realizarse el etiquetado automático de contenido?",
+    options: ["Solo en el dispositivo del usuario","Tanto del lado del cliente (Office) como del lado del servicio (en reposo en SharePoint, OneDrive, Exchange)","Solo en correos electrónicos","Solo en archivos PDF"],
+    correct: 1, explanation: "El etiquetado automático puede ocurrir del lado del cliente (al editar en aplicaciones de Office) y del lado del servicio (sobre datos en reposo en SharePoint, OneDrive y correos en tránsito en Exchange)." },
+  { q: "¿Qué son los tipos de información confidencial (Sensitive Information Types o SIT)?",
+    options: ["Tipos de licencias de usuario","Patrones predefinidos o personalizados que identifican datos sensibles como números de tarjeta o pasaporte","Categorías de dispositivos","Niveles de permisos de administrador"],
+    correct: 1, explanation: "Los tipos de información confidencial son clasificadores basados en patrones (expresiones regulares, palabras clave, sumas de verificación) que detectan datos sensibles como tarjetas de crédito, números de identidad, etc." },
+  { q: "¿Cuál de los siguientes es un ejemplo de tipo de información confidencial integrado?",
+    options: ["Nombre de la impresora","Número de tarjeta de crédito","Versión del sistema operativo","Tamaño del archivo"],
+    correct: 1, explanation: "Purview incluye numerosos SIT integrados como número de tarjeta de crédito, número de pasaporte, número de seguro social, entre muchos otros." },
+  { q: "¿Qué son los clasificadores entrenables (trainable classifiers)?",
+    options: ["Reglas estáticas de expresiones regulares","Modelos de machine learning que identifican contenido por su significado, no solo por patrones","Listas de palabras prohibidas","Plantillas de documentos"],
+    correct: 1, explanation: "Los clasificadores entrenables usan aprendizaje automático para reconocer tipos de contenido (como currículums o contratos) basándose en ejemplos, identificándolos por su naturaleza más que por patrones exactos." },
+  { q: "¿Qué herramienta de Purview permite ver dónde reside la información confidencial en la organización?",
+    options: ["Activity Explorer","Content Explorer (Explorador de contenido)","Azure Monitor","Microsoft Defender for Endpoint"],
+    correct: 1, explanation: "El Explorador de contenido (Content Explorer) ofrece una vista de la ubicación actual de los elementos confidenciales o etiquetados en la organización." },
+  { q: "¿Qué muestra el Activity Explorer (Explorador de actividad)?",
+    options: ["La ubicación física de los servidores","Las actividades realizadas sobre el contenido etiquetado y confidencial a lo largo del tiempo","El consumo de CPU de los equipos","Las licencias activas"],
+    correct: 1, explanation: "El Explorador de actividad muestra qué se está haciendo con el contenido etiquetado: cambios de etiqueta, degradaciones, archivos compartidos, etc., ayudando a monitorear el uso." },
+  { q: "¿Qué es la prevención de pérdida de datos (Data Loss Prevention - DLP) en Purview?",
+    options: ["Un servicio de backup en la nube","Un conjunto de políticas que detectan y evitan el uso compartido no autorizado de información confidencial","Un antivirus para correos","Una herramienta de recuperación ante desastres"],
+    correct: 1, explanation: "DLP permite definir políticas que identifican, supervisan y protegen automáticamente la información confidencial, evitando que se comparta o filtre de forma indebida." },
+  { q: "¿En qué cargas de trabajo puede aplicarse una política de DLP de Microsoft Purview?",
+    options: ["Solo en Exchange","Exchange, SharePoint, OneDrive, Teams y endpoints (dispositivos)","Solo en dispositivos Windows","Solo en sitios web públicos"],
+    correct: 1, explanation: "Las políticas DLP se pueden aplicar en Exchange Online, SharePoint, OneDrive, Microsoft Teams, endpoints (Endpoint DLP) y aplicaciones en la nube." },
+  { q: "¿Qué puede hacer una política DLP cuando detecta una infracción?",
+    options: ["Apagar la computadora del usuario","Bloquear la acción, mostrar una sugerencia de directiva (policy tip) y notificar/registrar el evento","Eliminar la cuenta del usuario","Formatear el disco duro"],
+    correct: 1, explanation: "Una política DLP puede bloquear el uso compartido, mostrar sugerencias de directiva al usuario, permitir la anulación con justificación, y generar alertas e informes para los administradores." },
+  { q: "¿Qué es Endpoint DLP?",
+    options: ["DLP que protege solo servidores de correo","La extensión de DLP a los dispositivos (endpoints) para supervisar actividades como copiar a USB o imprimir","Un firewall para dispositivos","Una herramienta de inventario de hardware"],
+    correct: 1, explanation: "Endpoint DLP extiende las capacidades de prevención de pérdida de datos a los dispositivos, acciones como copiar a USB, imprimir o cargar a la nube en dispositivos Windows y macOS." },
+  { q: "¿Qué relación tienen las etiquetas de confidencialidad con la protección de datos cifrados?",
+    options: ["No tienen relación","Una etiqueta puede aplicar cifrado y definir qué usuarios o grupos pueden acceder y con qué permisos","El cifrado solo es manual","Las etiquetas deshabilitan el cifrado"],
+    correct: 1, explanation: "Las etiquetas de confidencialidad pueden configurar cifrado, especificando qué usuarios/grupos tienen acceso y qué derechos de uso (ver, editar, imprimir, etc.) se les otorgan." },
+  { q: "¿Qué experiencia permite a los usuarios aplicar etiquetas de confidencialidad directamente en las aplicaciones de Office?",
+    options: ["El cliente de etiquetado integrado en Word, Excel, PowerPoint y Outlook","Solo el portal de administración","Solo PowerShell","Solo la app móvil de OneDrive"],
+    correct: 0, explanation: "Las etiquetas de confidencialidad están integradas de forma nativa en las aplicaciones de Microsoft 365 (Word, Excel, PowerPoint, Outlook), permitiendo aplicarlas fácilmente desde la barra de herramientas." },
+  { q: "¿Qué portal se utiliza para administrar las funcionalidades de protección de información de Purview?",
+    options: ["Azure Portal","El portal de Microsoft Purview (anteriormente portal de cumplimiento de Microsoft 365)","Microsoft Intune","El centro de administración de Exchange"],
+    correct: 1, explanation: "Las etiquetas, políticas DLP, clasificadores y exploradores se administran desde el portal de Microsoft Purview (anteriormente Microsoft 365 compliance center)." },
+  { q: "¿Qué es la prioridad u orden de las etiquetas de confidencialidad?",
+    options: ["No existe orden entre etiquetas","Las etiquetas se organizan jerárquicamente, donde una posición más baja indica mayor sensibilidad","Se ordenan alfabéticamente sin significado","El orden solo afecta el color"],
+    correct: 1, explanation: "Las etiquetas se publican en un orden que representa su nivel de sensibilidad; cuanto más abajo en la lista, mayor es la confidencialidad (por ejemplo, Público < Confidencial < Altamente confidencial)." },
+  { q: "¿Qué son las sub-etiquetas (sub-labels) de confidencialidad?",
+    options: ["Etiquetas de retención","Variantes agrupadas bajo una etiqueta principal para ofrecer opciones más específicas","Etiquetas de auditoría","Copias de seguridad de etiquetas"],
+    correct: 1, explanation: "Las sub-etiquetas permiten agrupar variantes bajo una etiqueta principal (por ejemplo, 'Confidencial' con sub-etiquetas 'Todos los empleados' y 'Solo destinatarios específicos')." },
+  { q: "¿Qué ventaja ofrece clasificar los datos antes de aplicar protección?",
+    options: ["Reduce el tamaño de los archivos","Permite aplicar las protecciones adecuadas según la sensibilidad real de la información","Aumenta la velocidad de Internet","Elimina la necesidad de licencias"],
+    correct: 1, explanation: "Clasificar los datos permite entender qué información es sensible y aplicar las protecciones proporcionales a su nivel de riesgo, optimizando la seguridad sin afectar la productividad." },
+  { q: "¿Qué permite la función de cifrado de mensajes de Microsoft Purview (Message Encryption)?",
+    options: ["Cifrar discos duros","Enviar correos electrónicos cifrados y con derechos protegidos a destinatarios internos y externos","Cifrar bases de datos SQL","Acelerar el envío de correos"],
+    correct: 1, explanation: "Microsoft Purview Message Encryption permite enviar correos protegidos y cifrados a cualquier destinatario (dentro o fuera de la organización), incluso a cuentas de correo personales." },
+  { q: "¿Qué es un policy tip (sugerencia de directiva) en DLP?",
+    options: ["Un consejo de rendimiento del sistema","Una notificación que se muestra al usuario cuando está a punto de infringir una política de protección","Un mensaje publicitario","Una alerta del antivirus"],
+    correct: 1, explanation: "Una sugerencia de directiva informa al usuario, en tiempo real, que su acción podría violar una política DLP, educándolo y permitiéndole corregir el comportamiento." },
+  { q: "¿Las etiquetas de confidencialidad pueden aplicarse a archivos almacenados en orígenes de datos en la nube de terceros?",
+    options: ["No, solo en Microsoft 365","Sí, mediante la integración con Microsoft Defender for Cloud Apps","Solo en Google Drive","Solo manualmente uno por uno"],
+    correct: 1, explanation: "Mediante la integración con Microsoft Defender for Cloud Apps, las etiquetas de confidencialidad pueden aplicarse y supervisarse en aplicaciones en la nube de terceros." },
+  { q: "¿Qué se necesita para que el etiquetado automático del lado del cliente esté disponible para los usuarios?",
+    options: ["Una licencia adecuada (como Microsoft 365 E5) y la publicación de la política de etiquetas","No requiere nada","Solo un navegador web","Apagar y encender el equipo"],
+    correct: 0, explanation: "El etiquetado automático del lado del cliente requiere licencias apropiadas (por ejemplo Microsoft 365 E5/E5 Compliance) y que la directiva de etiquetas con condiciones automáticas esté publicada para el usuario." },
+  { q: "¿Qué ocurre cuando un usuario intenta degradar (bajar) una etiqueta de confidencialidad de un documento?",
+    options: ["Se permite siempre sin restricciones","Se le puede requerir una justificación, y la acción queda registrada para auditoría","El documento se elimina","Se bloquea la cuenta del usuario"],
+    correct: 1, explanation: "Al quitar o bajar una etiqueta, se puede exigir al usuario que proporcione una justificación, y dicha acción se registra para fines de auditoría y cumplimiento." },
+  { q: "¿Qué tipo de marcas visuales puede agregar una etiqueta de confidencialidad a un documento?",
+    options: ["Solo el logo de la empresa","Encabezados, pies de página y marcas de agua","Solo cambios de fuente","Imágenes de fondo aleatorias"],
+    correct: 1, explanation: "Las etiquetas pueden insertar marcas de contenido visuales como encabezados, pies de página y marcas de agua que indican el nivel de confidencialidad del documento." },
+  { q: "¿Cómo contribuyen las funcionalidades de protección de información al cumplimiento normativo?",
+    options: ["No tienen relación con el cumplimiento","Ayudan a identificar, clasificar y proteger datos regulados, facilitando el cumplimiento de normativas como GDPR","Solo generan informes financieros","Reemplazan a los auditores"],
+    correct: 1, explanation: "Al clasificar y proteger datos sensibles y regulados, estas funcionalidades ayudan a las organizaciones a cumplir con regulaciones de privacidad y protección de datos como GDPR, HIPAA, etc." },
+  { q: "¿Cuál es el flujo general recomendado para la protección de información en Purview?",
+    options: ["Eliminar todos los datos antiguos","Conocer los datos (clasificar), proteger los datos (etiquetar/cifrar) y prevenir la pérdida (DLP)","Solo hacer copias de seguridad","Bloquear todo el acceso a Internet"],
+    correct: 1, explanation: "El enfoque de Purview sigue el principio de 'conocer tus datos' (descubrir y clasificar), 'proteger tus datos' (etiquetas y cifrado) y 'prevenir la pérdida de datos' (políticas DLP)." }
+];
+
+let currentIndex = 0;
+let score = 0;
+let answered = false;
+const slider = document.getElementById('slider');
+const progressFill = document.getElementById('progressFill');
+const navBar = document.getElementById('navBar');
+const btnNext = document.getElementById('btnNext');
+const resultsEl = document.getElementById('results');
+
+function createCard(idx) {
+  const q = questions[idx];
+  const card = document.createElement('div');
+  card.className = 'question-card next';
+  card.innerHTML = `
+    <div class="question-number">Pregunta ${idx + 1} de ${questions.length}</div>
+    <div class="question-text">${q.q}</div>
+    <div class="options">
+      ${q.options.map((opt, i) => `<button class="option" data-i="${i}">${opt}</button>`).join('')}
+    </div>
+    <div class="feedback"></div>
+  `;
+  slider.appendChild(card);
+
+  const buttons = card.querySelectorAll('.option');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const chosen = parseInt(btn.dataset.i);
+      const correct = q.correct;
+      buttons.forEach(b => b.disabled = true);
+      const fb = card.querySelector('.feedback');
+      if (chosen === correct) {
+        btn.classList.add('correct');
+        fb.className = 'feedback show correct-fb';
+        fb.innerHTML = `<strong>✓ ¡Correcto!</strong>${q.explanation}`;
+        score++;
+      } else {
+        btn.classList.add('incorrect');
+        buttons[correct].classList.add('correct');
+        fb.className = 'feedback show incorrect-fb';
+        fb.innerHTML = `<strong>✗ Incorrecto</strong><b>Respuesta correcta:</b> ${q.options[correct]}<br><br><b>Porque de la respuesta:</b> ${q.explanation}`;
+      }
+      btnNext.disabled = false;
+      btnNext.textContent = (currentIndex === questions.length - 1) ? 'Ver resultados →' : 'Siguiente →';
+    });
+  });
+  return card;
+}
+
+let currentCard = createCard(0);
+requestAnimationFrame(() => {
+  currentCard.classList.remove('next');
+  currentCard.classList.add('current');
+});
+navBar.style.display = 'flex';
+progressFill.style.width = (1 / questions.length * 100) + '%';
+
+btnNext.addEventListener('click', () => {
+  if (btnNext.disabled) return;
+  btnNext.disabled = true;
+
+  if (currentIndex === questions.length - 1) {
+    currentCard.classList.remove('current');
+    currentCard.classList.add('prev');
+    setTimeout(() => {
+      slider.innerHTML = '';
+      navBar.style.display = 'none';
+      showResults();
+    }, 500);
+    return;
+  }
+
+  const oldCard = currentCard;
+  oldCard.classList.remove('current');
+  oldCard.classList.add('prev');
+
+  currentIndex++;
+  answered = false;
+  currentCard = createCard(currentIndex);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      currentCard.classList.remove('next');
+      currentCard.classList.add('current');
+    });
+  });
+  progressFill.style.width = ((currentIndex + 1) / questions.length * 100) + '%';
+
+  setTimeout(() => oldCard.remove(), 600);
+});
+
+function showResults() {
+  document.getElementById('scoreText').textContent = `${score} / ${questions.length}`;
+  const pct = (score / questions.length) * 100;
+  let msg = '';
+  if (pct === 100) msg = '¡Perfecto! Dominas la protección de información en Microsoft Purview.';
+  else if (pct >= 80) msg = '¡Excelente! Tienes un sólido entendimiento del tema.';
+  else if (pct >= 60) msg = 'Buen trabajo, pero revisa los temas en los que fallaste.';
+  else msg = 'Te recomendamos repasar las funcionalidades de protección de información de Purview antes de presentar SC-900.';
+  document.getElementById('scoreMessage').textContent = msg;
+  resultsEl.classList.add('show');
+}
+</script>
+</body>
+</html>
